@@ -17,15 +17,15 @@ const LaunchRequestHandler = {
   },
 };
 
-const HelloWorldIntentHandler = {
+const PhoneMessageHandler = {
   canHandle(handlerInput) {
     return (
       Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest" &&
-      Alexa.getIntentName(handlerInput.requestEnvelope) === "HelloWorldIntent"
+      Alexa.getIntentName(handlerInput.requestEnvelope) === "MessagePhoneIntent"
     );
   },
   async handle(handlerInput) {
-    var speakOutput = "Hello World!";
+    
     const {
       apiAccessToken,
       apiEndpoint,
@@ -36,21 +36,17 @@ const HelloWorldIntentHandler = {
         { headers: { "Authorization": "Bearer " + apiAccessToken } }
       );
       speakOutput =
-        status && data
+        status == 200 && data
           ? `Your Phone Number is: ${data.countryCode} ${data.phoneNumber}`
           : "Hello There";
     } catch (err) {
-        console.log(err.message);
         return handlerInput.responseBuilder
-        .speak('Can I have some permissions?')
-        .withAskForPermissionsConsentCard([
-            "alexa::profile:given_name:read",
-            "alexa::profile:mobile_number:read",
-          ])
+        .speak('You need to give me your number for this to work. Check your permissions')
+        .withAskForPermissionsConsentCard(["alexa::profile:mobile_number:read"])
         .getResponse();
     }
     return handlerInput.responseBuilder
-        .speak(speakOutput)
+        .speak('Alright! I texted you!')
         .reprompt(speakOutput)
         .getResponse();
   },
