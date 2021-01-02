@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: '531AlexaSkill
+
+  '
+Parameters:
+  AlexaSkill:
+    Type: String
+    Default: amzn1.ask.skill.07d153f3-c1cc-4317-87d9-b37faf71582a
+    AllowedPattern: amzn[0-9].ask.skill.*-*-*-*-*
+Globals:
+  Function:
+    MemorySize: 128
+    Timeout: 3
+Resources:
+  AlexaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://alexaliftskill/80bcd4240d921392b7c528930843842f
+      Handler: app.handler
+      Runtime: nodejs12.x
+      Role:
+        Fn::GetAtt:
+        - AlexaFunctionRole
+        - Arn
+      Events:
+        AlexaTrigger:
+          Type: AlexaSkill
+          SkillId:
+            Ref: AlexaSkill
+  AlexaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Description: Allows Lambda to Use SNS
+  AlexaFunctionPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: AllowSNSfromLambda
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Action: sns:Publish
+          Resource: '*'
+      Roles:
+      - Ref: AlexaFunctionRole
+Outputs:
+  AlexaFunction:
+    Description: Alexa Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - AlexaFunction
+      - Arn
