@@ -1,5 +1,8 @@
 const Alexa = require("ask-sdk-core");
 const axios = require("axios");
+const AWS = require('aws-sdk');
+
+const sns = new AWS.SNS({apiVersion: '2010-03-31'});  
 
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
@@ -25,7 +28,6 @@ const PhoneMessageHandler = {
     );
   },
   async handle(handlerInput) {
-    
     const {
       apiAccessToken,
       apiEndpoint,
