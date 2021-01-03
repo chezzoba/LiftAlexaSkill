@@ -1,32 +1,38 @@
-
 const Alexa = require("ask-sdk-core");
 const axios = require("axios");
 const AWS = require("aws-sdk");
 
-const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
+const smsRegions = ["us-east-2", "us-east-1", 
+"us-west-1", "us-west-2", "ap-south-1", "ap-southeast-1", "ap-southeast-2", 
+"ap-northeast-1", "ca-central-1", "eu-central-1", "eu-west-1", "eu-west-2", 
+"eu-west-3", "eu-north-1", "me-south-1", "sa-east-1"];
+
+const sns = new AWS.SNS({ 
+  apiVersion: "2010-03-31", 
+  region: smsRegions[Math.floor(Math.random() * smsRegions.length)] 
+});
+
 const dynamodb = new AWS.DynamoDB.DocumentClient({ region: "us-east-1" });
 
-const getDay = () => {
-  const days = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
-  const dayNumber = new Date();
-  return days[dayNumber.getDay()];
-};
+const days = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
-const day = getDay();
+const dayNumber = new Date();
+
+const day = days[dayNumber.getDay()];
 
 const get = async (number) => {
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
-    AttributesToGet: [day, "week"],
+    AttributesToGet: [day, "week", "kilos"],
   };
 
   const lift = await dynamodb
@@ -39,18 +45,19 @@ const get = async (number) => {
   return lift.Item;
 };
 
-const put = async (number, liftName, trainingMax) => {
+const put = async (number, liftName, trainingMax, liftDay, kilos = true) => {
   const entry = new Object();
   const attr = liftName
     .split(" ")
-    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
-  entry[attr.join(" ")] = trainingMax;
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+  entry[attr] = trainingMax;
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
-    UpdateExpression: "set #a = :l, ",
-    ExpressionAttributeNames: { "#a": day },
-    ExpressionAttributeValues: { ":l": entry },
+    UpdateExpression: "set #a = :l, #b = :k",
+    ExpressionAttributeNames: { "#a": liftDay, "#b": "kilos" },
+    ExpressionAttributeValues: { ":l": entry, ":k": kilos },
     ReturnValues: "UPDATED_NEW",
   };
   const res = await dynamodb
@@ -67,7 +74,7 @@ const updateWeek = async (number, neWeek) => {
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
-    UpdateExpression: "set #a = :l, ",
+    UpdateExpression: "set #a = :l",
     ExpressionAttributeNames: { "#a": "week" },
     ExpressionAttributeValues: { ":l": neWeek },
     ReturnValues: "UPDATED_NEW",
@@ -111,13 +118,9 @@ const processWeight = (week, dayObject, kilos = true) => {
     const unit = kilos ? "kilos" : "pounds";
     const msg = [
       `Today you are doing the ${lift} for: `,
-      `${week === 1 ? "A" : week} rep${week === 1 ? "" : "s"} of ${
-        weights[0]
-      } ${unit}, `,
-      `${week === 1 ? "A" : week} rep${week === 1 ? "" : "s"} of ${
-        weights[1]
-      } ${unit}, `,
-      `More than ${week === 1 ? "a" : week} rep${week === 1 ? "" : "s"} of ${
+      `${week === 1 ? "A rep" : week + " reps"} of ${weights[0]} ${unit}, `,
+      `${week === 1 ? "A rep" : week + " reps"} of ${weights[1]} ${unit}, `,
+      `More than ${week === 1 ? "A rep" : week + " reps"} of ${
         weights[2]
       } ${unit}, `,
       `5 sets of 5 reps of ${weights[3]} ${unit}`,
@@ -126,7 +129,7 @@ const processWeight = (week, dayObject, kilos = true) => {
   }
 };
 
-const oneRepMax = (mass, reps) => Math.round(0.9 * mass * (1 + reps / 3));
+const repMax = (mass, reps) => Math.round(0.9 * mass * 36 / (37 - reps));
 
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
@@ -135,11 +138,8 @@ const LaunchRequestHandler = {
     );
   },
   handle(handlerInput) {
-    const today = new Date();
-    const time = today.getHours();
-    const greeting =
-      5 <= time < 12 ? "Morning" : 12 <= time < 17 ? "Afternoon" : "Evening";
-    const speakOutput = `Good ${greeting}. Ask or tell me how much you lifted.`;
+    const speakOutput = `Ask or tell me how much you have lifted. 
+    You can also ask me to send you a message.`;
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
@@ -156,6 +156,10 @@ const PhoneMessageHandler = {
     );
   },
   async handle(handlerInput) {
+    const {
+      confirmationStatus,
+      name,
+    } = handlerInput.requestEnvelope.request.intent;
     try {
       const { phoneNumber, countryCode } = await getNumber(
         handlerInput.requestEnvelope.context.System
@@ -167,38 +171,47 @@ const PhoneMessageHandler = {
           .speak(
             "You haven't told me anything yet. Believe me I'd remember if you did."
           )
+          .reprompt("So... This is getting awkward, huh?")
           .getResponse();
       }
       const msg = processWeight(parseInt(data.week), data[day]);
-      const params = {
-        PhoneNumber: number,
-        Message: msg.join("\n"),
-        MessageAttributes: {
-          "AWS.SNS.SMS.SenderID": {
-            DataType: "String",
-            StringValue: "MyLifts",
-          }
-        },
-      };
-      await sns.publish(params, (err, data) => {
-        if (err) console.log(err);
-        else console.log(data);
-      }).promise();
-      return handlerInput.responseBuilder
-        .speak("Alright! I texted you!")
-        .reprompt('Is there something else I can help you with?')
-        .getResponse();
+      var outputText = msg.join("\n");
+      if (confirmationStatus === "CONFIRMED") {
+        const params = {
+          PhoneNumber: number,
+          Message: msg.join("\n"),
+          MessageAttributes: {
+            "AWS.SNS.SMS.SenderID": {
+              DataType: "String",
+              StringValue: "MyLifts",
+            },
+          },
+        };
+
+        await sns.publish(params, (err, data) => {
+          if (err) console.log(err);
+          else console.log(data);
+        }).promise();
+
+        outputText = "Alright! I texted you!";
+      }
     } catch (err) {
       console.log(err);
-      if (err.message.slice(-3) in ['401', '403']) {
+      if ( err.response && err.response.status in [401, 403] ) {
         return handlerInput.responseBuilder
-        .speak(
-          "You need to give me your number for this to work. Check your permissions "
-        )
-        .withAskForPermissionsConsentCard(["alexa::profile:mobile_number:read"])
-        .getResponse();
-      }
+          .speak(
+            "You need to give me your number for this to work. Check your permissions."
+          )
+          .withAskForPermissionsConsentCard([
+            "alexa::profile:mobile_number:read",
+          ])
+          .getResponse();
+      } else outputText = "Something seems to have gone wrong.";
     }
+    return handlerInput.responseBuilder
+        .speak(outputText)
+        .reprompt("Is there something else I can help you with?")
+        .getResponse();
   },
 };
 
@@ -211,7 +224,8 @@ const HelpIntentHandler = {
   },
   handle(handlerInput) {
     const speakOutput =
-      "Ask me 'How much should I lift today?' or tell me how much you did today.";
+      `Ask me 'How much should I lift today?' or tell me how much you did today.
+      You can also ask me to send you a message.`;
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
@@ -237,23 +251,6 @@ const CancelAndStopIntentHandler = {
   },
 };
 
-const TellMeMyLiftIntentHandler = {
-  canHandle(handlerInput) {
-    return (
-      Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest" &&
-      Alexa.getIntentName(handlerInput.requestEnvelope) === "MyLiftIntent"
-    );
-  },
-  handle(handlerInput) {
-    const speakOutput = "Goodbye!";
-
-    return handlerInput.responseBuilder
-      .speak(speakOutput)
-      .reprompt(speakOutput)
-      .getResponse();
-  },
-};
-
 const FallbackIntentHandler = {
   canHandle(handlerInput) {
     return (
@@ -263,7 +260,7 @@ const FallbackIntentHandler = {
     );
   },
   handle(handlerInput) {
-    const speakOutput = "Sorry, I don't know about that. Please try again.";
+    const speakOutput = "Sorry, I don't seem to have understood what you have just said.";
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
@@ -271,6 +268,72 @@ const FallbackIntentHandler = {
       .getResponse();
   },
 };
+
+const PutMyLiftIntentHandler = {
+  canHandle(handlerInput) {
+    return (
+      Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest" &&
+      Alexa.getIntentName(handlerInput.requestEnvelope) === "PutIntent"
+    );
+  },
+  async handle(handlerInput) {
+    const slots = new Object();
+    var speakOutput = "";
+
+    Object.values(handlerInput.requestEnvelope.request.intent.slots).map(
+      ({ resolutions, value, name }) => {
+        slots[name] =
+          (resolutions &&
+            resolutions.resolutionsPerAuthority &&
+            resolutions.resolutionsPerAuthority[0].values &&
+            resolutions.resolutionsPerAuthority[0].values[0].value &&
+            resolutions.resolutionsPerAuthority[0].values[0].value.name) ||
+          (!isNaN(parseFloat(value)) ? parseFloat(value) : value);
+      }
+    );
+
+    const transform = { today: 0, yesterday: -1, tomorrow: 1 };
+    const liftDay = slots.day in Object.keys(transform)
+      ? days[dayNumber + transform[slots.day]]
+      : slots.day in days ? slots.day : day;
+
+    const trainingMax = repMax(slots.mass, slots.reps);
+    const kilos = slots.units !== "pounds";
+
+    try {
+      const { phoneNumber, countryCode } = await getNumber(
+        handlerInput.requestEnvelope.context.System
+      );
+      const number = `+${countryCode}${phoneNumber}`;
+
+      await put(number, slots.lift, trainingMax, liftDay, kilos);
+      await updateWeek(number, slots.reps in [5., 3., 1.] ? slots.reps : 5);
+      speakOutput = `So I'm guessing your training max for the ${slots.lift} is about 
+      ${trainingMax} ${kilos ? 'kilos' : 'pounds'} and your one rep max,
+      ${Math.round(trainingMax / 0.9)} ${kilos ? 'kilos' : 'pounds'}.
+      I'll remember this for next time.`;
+
+    } catch (err) {
+      console.log(err);
+      if ( err.response && err.response.status in [401, 403] ) {
+        return handlerInput.responseBuilder
+          .speak(
+            "You need to give me your number for this to work. Check your permissions "
+          )
+          .withAskForPermissionsConsentCard([
+            "alexa::profile:mobile_number:read",
+          ])
+          .getResponse();
+      } else speakOutput = "I'm having a little trouble at the moment.";
+    }
+
+    return handlerInput.responseBuilder
+      .speak(speakOutput)
+      .reprompt(speakOutput)
+      .getResponse();
+  },
+};
+
 /* *
  * SessionEndedRequest notifies that a session was ended. This handler will be triggered when a currently open
  * session is closed for one of the following reasons: 1) The user says "exit" or "quit". 2) The user does not
@@ -291,11 +354,7 @@ const SessionEndedRequestHandler = {
     return handlerInput.responseBuilder.getResponse(); // notice we send an empty response
   },
 };
-/* *
- * The intent reflector is used for interaction model testing and debugging.
- * It will simply repeat the intent the user said. You can create custom handlers for your intents
- * by defining them above, then also adding them to the request handler chain below
- * */
+
 const IntentReflectorHandler = {
   canHandle(handlerInput) {
     return (
@@ -314,19 +373,15 @@ const IntentReflectorHandler = {
     );
   },
 };
-/**
- * Generic error handling to capture any syntax or routing errors. If you receive an error
- * stating the request handler chain is not found, you have not implemented a handler for
- * the intent being invoked or included it in the skill builder below
- * */
+
 const ErrorHandler = {
   canHandle() {
     return true;
   },
   handle(handlerInput, error) {
     const speakOutput =
-      "Sorry, I had trouble doing what you asked. Please try again.";
-    console.log(`~~~~ Error handled: ${JSON.stringify(error)}`);
+      "I'm sorry, I don't feel too good about my answer. Please check on me later.";
+    console.error(error.message);
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
@@ -344,7 +399,7 @@ exports.handler = Alexa.SkillBuilders.custom()
   .addRequestHandlers(
     LaunchRequestHandler,
     PhoneMessageHandler,
-    TellMeMyLiftIntentHandler,
+    PutMyLiftIntentHandler,
     HelpIntentHandler,
     CancelAndStopIntentHandler,
     FallbackIntentHandler,
@@ -352,5 +407,7 @@ exports.handler = Alexa.SkillBuilders.custom()
     IntentReflectorHandler
   )
   .addErrorHandlers(ErrorHandler)
-  .withCustomUserAgent('LiftApp')
+  .withCustomUserAgent("LiftApp")
   .lambda();
+
+
