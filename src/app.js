@@ -46,12 +46,11 @@ const get = async (number) => {
 };
 
 const put = async (number, liftName, trainingMax, liftDay, kilos = true) => {
-  const entry = new Object();
   const attr = liftName
     .split(" ")
     .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
     .join(" ");
-  entry[attr] = trainingMax;
+  const entry = {lift: attr, mass: trainingMax, edited: dayNumber.getDate()};
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
@@ -97,8 +96,7 @@ const getNumber = async ({ apiAccessToken, apiEndpoint }) => {
   return status == 200 && data;
 };
 
-const processWeight = (week, dayObject, kilos = true) => {
-  const [lift, trainingMax] = Object.entries(dayObject)[0];
+const processWeight = (week, lift, trainingMax, kilos = true) => {
   if (lift === "Rest") {
     return ["Today is your Rest Day!"];
   } else {
@@ -173,7 +171,11 @@ const PhoneMessageHandler = {
       if (data.ProgressDay && data.ProgressDay === dayNumber.getDay()) {
         await updateWeek(number, data.week && data.week > 2 ? data.week - 2 : 5)
       }
-      const msg = processWeight(parseInt(data.week), data[day], data.kilos);
+      if (data[day].edited !== dayNumber.getDate()) {
+        const progression = (data.kilos ? 1 : 2) * (data[day].lift === 'Deadlift' ? 2.5 : 1.25);
+        await put(number, lift, data[day].mass + progression, day, data.kilos);
+      }
+      const msg = processWeight(parseInt(data.week), lift, trainingMax, data.kilos);
       var outputText = msg.join("\n");
       if (confirmationStatus === "CONFIRMED") {
         const params = {
@@ -292,9 +294,9 @@ const PutMyLiftIntentHandler = {
     );
 
     const transform = { today: 0, yesterday: -1, tomorrow: 1 };
-    const liftDay = slots.day in Object.keys(transform)
+    const liftDay = slots.day in transform
       ? days[dayNumber.getDay() + transform[slots.day]]
-      : slots.day in days ? slots.day : day;
+      : days.includes(slots.day) ? slots.day : day;
 
     
     const kilos = slots.units !== "pounds";
