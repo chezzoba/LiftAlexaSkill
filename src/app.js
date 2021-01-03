@@ -32,7 +32,7 @@ const get = async (number) => {
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
-    AttributesToGet: [day, "week", "kilos"],
+    AttributesToGet: [day, "week", "kilos", 'ProgressDay'],
   };
 
   const lift = await dynamodb
@@ -74,9 +74,9 @@ const updateWeek = async (number, neWeek) => {
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
-    UpdateExpression: "set #a = :l",
-    ExpressionAttributeNames: { "#a": "week" },
-    ExpressionAttributeValues: { ":l": neWeek },
+    UpdateExpression: "set #a = :l, #b = :u",
+    ExpressionAttributeNames: { "#a": "week", "#b": "ProgressDay"},
+    ExpressionAttributeValues: { ":l": neWeek, ":u": dayNumber.getDay() },
     ReturnValues: "UPDATED_NEW",
   };
   const res = await dynamodb
@@ -103,7 +103,6 @@ const processWeight = (week, dayObject, kilos = true) => {
     return ["Today is your Rest Day!"];
   } else {
     const basePercent = week === 1 ? 75 : week === 3 ? 70 : 65;
-    const cvrt = kilos ? 1 : 2.20462262185;
     const unt = kilos ? 2.5 : 5;
     const percentages = [
       basePercent,
@@ -113,7 +112,7 @@ const processWeight = (week, dayObject, kilos = true) => {
     ];
     const weights = percentages.map(
       (percent) =>
-        Math.round((trainingMax * percent * cvrt) / (unt * 100)) * unt
+        Math.round((trainingMax * percent ) / (unt * 100)) * unt
     );
     const unit = kilos ? "kilos" : "pounds";
     const msg = [
@@ -156,10 +155,7 @@ const PhoneMessageHandler = {
     );
   },
   async handle(handlerInput) {
-    const {
-      confirmationStatus,
-      name,
-    } = handlerInput.requestEnvelope.request.intent;
+    const { confirmationStatus } = handlerInput.requestEnvelope.request.intent;
     try {
       const { phoneNumber, countryCode } = await getNumber(
         handlerInput.requestEnvelope.context.System
@@ -169,12 +165,15 @@ const PhoneMessageHandler = {
       if (!data) {
         return handlerInput.responseBuilder
           .speak(
-            "You haven't told me anything yet. Believe me I'd remember if you did."
+            "You didn't tell me anything yet. Believe me I'd remember if you did."
           )
           .reprompt("So... This is getting awkward, huh?")
           .getResponse();
       }
-      const msg = processWeight(parseInt(data.week), data[day]);
+      if (data.ProgressDay && data.ProgressDay === dayNumber.getDay()) {
+        await updateWeek(number, data.week && data.week > 2 ? data.week - 2 : 5)
+      }
+      const msg = processWeight(parseInt(data.week), data[day], data.kilos);
       var outputText = msg.join("\n");
       if (confirmationStatus === "CONFIRMED") {
         const params = {
@@ -197,7 +196,7 @@ const PhoneMessageHandler = {
       }
     } catch (err) {
       console.log(err);
-      if ( err.response && err.response.status in [401, 403] ) {
+      if ( err.response && [401, 403].includes(err.response.status) ) {
         return handlerInput.responseBuilder
           .speak(
             "You need to give me your number for this to work. Check your permissions."
@@ -294,11 +293,13 @@ const PutMyLiftIntentHandler = {
 
     const transform = { today: 0, yesterday: -1, tomorrow: 1 };
     const liftDay = slots.day in Object.keys(transform)
-      ? days[dayNumber + transform[slots.day]]
+      ? days[dayNumber.getDay() + transform[slots.day]]
       : slots.day in days ? slots.day : day;
 
-    const trainingMax = repMax(slots.mass, slots.reps);
+    
     const kilos = slots.units !== "pounds";
+    const trainingMax = repMax(slots.mass, slots.reps);
+
 
     try {
       const { phoneNumber, countryCode } = await getNumber(
@@ -307,7 +308,9 @@ const PutMyLiftIntentHandler = {
       const number = `+${countryCode}${phoneNumber}`;
 
       await put(number, slots.lift, trainingMax, liftDay, kilos);
-      await updateWeek(number, slots.reps in [5., 3., 1.] ? slots.reps : 5);
+
+      if ( [5, 3, 1].includes(slots.reps) ) await updateWeek(number, slots.reps);
+
       speakOutput = `So I'm guessing your training max for the ${slots.lift} is about 
       ${trainingMax} ${kilos ? 'kilos' : 'pounds'} and your one rep max,
       ${Math.round(trainingMax / 0.9)} ${kilos ? 'kilos' : 'pounds'}.
@@ -315,7 +318,7 @@ const PutMyLiftIntentHandler = {
 
     } catch (err) {
       console.log(err);
-      if ( err.response && err.response.status in [401, 403] ) {
+      if ( err.response && [401, 403].includes(err.response.status) ) {
         return handlerInput.responseBuilder
           .speak(
             "You need to give me your number for this to work. Check your permissions "

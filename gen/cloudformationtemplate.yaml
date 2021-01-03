@@ -1,8 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: '531AlexaSkill
-
-  '
+Description: "531AlexaSkill\n"
 Parameters:
   AlexaSkill:
     Type: String
@@ -12,11 +10,15 @@ Globals:
   Function:
     MemorySize: 128
     Timeout: 3
+    Environment:
+      Variables:
+        TABLE:
+          Ref: Table
 Resources:
   AlexaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://alexaliftskill/80bcd4240d921392b7c528930843842f
+      CodeUri: s3://alexaliftskill/e52a0101f34f1e4b15643a91a5c6cc61
       Handler: app.handler
       Runtime: nodejs12.x
       Role:
@@ -28,6 +30,15 @@ Resources:
           Type: AlexaSkill
           SkillId:
             Ref: AlexaSkill
+  Table:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: phone
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 3
+        WriteCapacityUnits: 3
   AlexaFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -42,7 +53,9 @@ Resources:
           - sts:AssumeRole
       Path: /
       Description: Allows Lambda to Use SNS
-  AlexaFunctionPolicy:
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  AlexaFunctionSNSPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: AllowSNSfromLambda
@@ -52,6 +65,22 @@ Resources:
         - Effect: Allow
           Action: sns:Publish
           Resource: '*'
+      Roles:
+      - Ref: AlexaFunctionRole
+  AlexaFunctionDBPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: AllowDynamoDBWritesfromLambda
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Action:
+          - dynamodb:PutItem
+          - dynamodb:GetItem
+          - dynamodb:UpdateItem
+          Resource:
+            Fn::Sub: arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Table}
       Roles:
       - Ref: AlexaFunctionRole
 Outputs:
