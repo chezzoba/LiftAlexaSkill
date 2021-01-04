@@ -60,15 +60,16 @@
         in order to have a text message delivered, I request for the number of the user and nothing more.
         As the skill requires uniquely identifiable information in order to retreive the data for the particular user,
         the phone number also serves to persist user attributes between sessions. This ensures that the user is identified
-        not only between sessions but also after re enabling the application, unlike the alternatives. The data stored is not
+        not only between sessions but also after re enabling the application, unlike the alternatives. 
+        Users may speak to the skill and have their queries recorded (specifically the weights of their excercises). 
+        As this involves the core functionality of the skill and is the primary purpose, this data has to be 
+        collected and stored on the Amazon Web Services DynamoDB database. The data stored is not
         disclosed to third parties and resides on the database. No data is made public.
       </p>
       <h2>Future Alterations</h2>
       <p>
-        No additional data is intended to be collected in the future. Also, for the purposes of transparency,
-        the source code is made public (including this site) on this 
-        <a href="https://github.com/chezzoba/LiftAlexaSkill" target="_blank">GitHub Repository</a> so changes made
-        to the skill can be observed by both users and developers, should they have any concerns.
+        No additional data is intended to be collected in the future. Although additional features are intended to be added
+        such as scheduled reminders. These however, require the same level of permissions as before.
         That being said, your use of the skill will be assumed to be your acceptance of this document.
       </p>
     </div>

@@ -117,7 +117,7 @@ const processWeight = (week, lift, trainingMax, kilos = true) => {
       `Today you are doing the ${lift} for: `,
       `${week === 1 ? "A rep" : week + " reps"} of ${weights[0]} ${unit}, `,
       `${week === 1 ? "A rep" : week + " reps"} of ${weights[1]} ${unit}, `,
-      `More than ${week === 1 ? "A rep" : week + " reps"} of ${
+      `More than ${week === 1 ? "a rep" : week + " reps"} of ${
         weights[2]
       } ${unit}, `,
       `5 sets of 5 reps of ${weights[3]} ${unit}`,
