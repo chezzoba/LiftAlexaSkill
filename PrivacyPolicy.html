@@ -6,6 +6,12 @@
     <title>PRIVACY POLICY</title>
     <link rel="icon" href="icons/icon_108_A2Z.png" type="image/x-icon" />
     <style>
+        code {
+          font-family: Consolas,"courier new";
+          font-size: 12px;
+          white-space:pre;
+        }
+
         body {
             text-align: center;
             font-family: Arial;
@@ -69,7 +75,7 @@
         not only between sessions but also after re enabling the application, unlike the alternatives. 
         Users may speak to the skill and have their queries recorded (specifically the weights of their excercises). 
         As this involves the core functionality of the skill and is the primary purpose, this data is 
-        collected and stored on the Amazon Web Services DynamoDB database. The data stored is not
+        collected and stored on the Amazon Web Services (AWS) DynamoDB database. The data stored is not
         disclosed to third parties and resides on the private database. No data is made public with only one exception.
         I will cooperate with government policies, and by doing so I will disclose information
         to a governmental organisation or law enforcement agency if the law deems necessary.
@@ -85,8 +91,73 @@
         If you have any questions regarding this policy, or the practices employed in the skill, you may contact me at
         k.k.wadia@student.tudelft.nl or at kaizad@email.com.
       </p>
+      <h2>Addendum: Security</h2>
+      <p>
+        Several measures are taken so that the user's data is not mistakenly exposed. 
+        Firstly, the AWS account used is private and
+        only I have access to the resources in it. Secondly, the backend is configured with Skill Verification and is never
+        invoked without the Alexa Skill ID being verified. Lastly, all the policies set within the account are done 
+        by giving the least privilege as possible. 
+        The following document shows the configuration of the policies set in order to secure the permissions between the 
+        backend and the database. <button>Reveal</button>
+      </p>
+      <code style="display: none;">
+        AlexaFunctionRole:
+          Type: AWS::IAM::Role
+          Properties: 
+            AssumeRolePolicyDocument: 
+              Version: "2012-10-17"
+              Statement: 
+                - 
+                  Effect: "Allow"
+                  Principal: 
+                    Service: 
+                      - "lambda.amazonaws.com"
+                  Action: 
+                    - "sts:AssumeRole"
+            Path: "/"
+            Description: Allows Lambda to Use SNS and DynamoDB
+            ManagedPolicyArns: 
+              - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+          
+        AlexaFunctionSNSPolicy:
+          Type: 'AWS::IAM::Policy'
+          Properties:
+            PolicyName: AllowSNSfromLambda
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action: 'sns:Publish'
+                  Resource: '*'
+            Roles:
+              - !Ref AlexaFunctionRole
+        
+        AlexaFunctionDBPolicy:
+          Type: 'AWS::IAM::Policy'
+          Properties:
+            PolicyName: AllowDynamoDBWritesfromLambda
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'dynamodb:PutItem'
+                    - 'dynamodb:GetItem'
+                    - 'dynamodb:UpdateItem'
+                  Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Table}"
+            Roles:
+              - !Ref AlexaFunctionRole
+      </code>
     </div>
     <footer>The Privacy Policy Document was last updated on January 04, 2021</footer>
+    <script>
+      document.querySelector('button').addEventListener('click', (e) => {
+        const show = document.querySelector('code').style.display === 'inline';
+        document.querySelector('code').style.display = show ? "none" : "inline";
+        e.target.innerText = show ? "Reveal" : "Hide";
+      });
+    </script>
 </body>
 
 </html>

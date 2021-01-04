@@ -55,7 +55,7 @@ Resources:
             Action: 
               - "sts:AssumeRole"
       Path: "/"
-      Description: Allows Lambda to Use SNS
+      Description: Allows Lambda to Use SNS and DynamoDB
       ManagedPolicyArns: 
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
     
