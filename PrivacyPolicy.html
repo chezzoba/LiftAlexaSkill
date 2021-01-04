@@ -1,163 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PRIVACY POLICY</title>
     <link rel="icon" href="icons/icon_108_A2Z.png" type="image/x-icon" />
     <style>
-        code {
-          font-family: Consolas,"courier new";
-          font-size: 12px;
-          white-space:pre;
-        }
+      code {
+        font-family: Consolas, "courier new";
+        font-size: 12px;
+        white-space: pre;
+      }
 
-        body {
-            text-align: center;
-            font-family: Arial;
-            font-size: 18px;
-            line-height: 1.5;
-            
-        }
+      body {
+        text-align: center;
+        font-family: Arial;
+        font-size: 18px;
+        line-height: 1.5;
+      }
+      .content {
+        text-align: left;
+        margin: 5rem 10% 0 10%;
+      }
+      @media (max-width: 800px) {
         .content {
-          text-align: left;
-          margin: 5rem 10% 0 10%;
-        }
-        @media (max-width: 800px) {
-          .content {
-            text-align: center;
-            margin: 5rem 0 0 0;
-          }
-        }
-        h1 {
-          margin: 3rem 0 2rem 0;
-          font-family: sans-serif;
-          font-size: 36px;
-        }
-        hr {
-          border: 0;
-          height: 0; 
-          box-shadow: 0 0 10px 1px black;
-        }
-        h2 {
           text-align: center;
-          margin-top: 3rem;
-          font-size: 30px;
+          margin: 5rem 0 0 0;
         }
+      }
+      h1 {
+        margin: 3rem 0 2rem 0;
+        font-family: sans-serif;
+        font-size: 36px;
+      }
+      hr {
+        border: 0;
+        height: 0;
+        box-shadow: 0 0 10px 1px black;
+      }
+      h2 {
+        text-align: center;
+        margin-top: 3rem;
+        font-size: 30px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>PRIVACY POLICY</h1>
-    <hr>
+    <hr />
     <div class="content">
       <h2>General</h2>
       <p>
-        This document elucidates on the data collected by the developer (henceforth referred to as "me" or "I") 
-        of the Alexa skill "Progress Track"
-        (henceforth referred to as "the skill") from the user thereof (referred to as "you") and
-        the protection of the user's privacy. However, prior to reading this document, it would be worthwhile to first
-        look at that of 
-        <a href="https://www.amazon.com/gp/help/customer/display.html?nodeId=GX7NJQ4ZB8MHFRNJ" target="_blank">
+        This document elucidates on the data collected by the developer, Kaizad
+        Wadia (henceforth referred to as "me" or "I") of the Alexa skill "Gym
+        Progress Track" (henceforth referred to as "the skill") from the user
+        thereof and the protection of the user's privacy. However, prior to
+        reading this document, it would be worthwhile to first look at that of
+        <a
+          href="https://www.amazon.com/gp/help/customer/display.html?nodeId=GX7NJQ4ZB8MHFRNJ"
+          target="_blank"
+        >
           Amazon Digital Services LLC
-        </a> (with its affiliates, “Amazon”). 
-        This furthermore pertains to the use of the Alexa Voice Service provided by Amazon 
-        for which there exist "skills" that are created independently by developers. The document aims to elaborate on
-        the privacy and use of the user's personal data for the skill that I have created.
-        By using "Progress Track" you agree to this policy in its entirety. 
+        </a>
+        (with its affiliates, “Amazon”). This furthermore pertains to the use of
+        the Alexa Voice Service provided by Amazon for which there exist
+        "skills" that are created independently by developers. The document aims
+        to elaborate on the privacy and use of the user's personal data for the
+        skill that I have created. By utilizing "Gym Progress Track" you, the
+        user, agree to this policy in its entirety.
       </p>
       <h2>Data Collected</h2>
       <p>
-        For the purpose of full disclosure, the phone number of each user is collected and stored on the database.
-        This is for its most prominent feature, which sends an SMS text message to the user. As a number is mandatory
-        in order to have a text message delivered, I request for the number of the user and nothing more.
-        As the skill requires uniquely identifiable information in order to retreive the data for the particular user,
-        the phone number also serves to persist user attributes between sessions. This ensures that the user is identified
-        not only between sessions but also after re enabling the application, unlike the alternatives. 
-        Users may speak to the skill and have their queries recorded (specifically the weights of their excercises). 
-        As this involves the core functionality of the skill and is the primary purpose, this data is 
-        collected and stored on the Amazon Web Services (AWS) DynamoDB database. The data stored is not
-        disclosed to third parties and resides on the private database. No data is made public with only one exception.
-        I will cooperate with government policies, and by doing so I will disclose information
-        to a governmental organisation or law enforcement agency if the law deems necessary.
+        For the purpose of full disclosure, the phone number of each user is
+        used, but not stored. This is for its most prominent feature, which
+        sends an SMS text message to the user. As a working phone number is
+        mandatory in order to have a text message delivered and received, I
+        request for the current phone number of the user and nothing more. Since
+        the skill requires uniquely identifiable information in order to
+        retreive the data for the particular user, the Amazon User
+        Identification parameter is used for storing persistent data in between
+        sessions. Users may speak to the skill and have their queries and / or
+        statements recorded, specifically the weights of their exercises. As
+        this involves the core functionality of the skill and is the primary
+        purpose, this data is collected and stored on the Amazon Web Services
+        (AWS) DynamoDB database.
+      </p>
+      <p>
+        No data is made public as it resides on a private database. The data
+        stored is not and will not be disclosed to any third parties, with one
+        possible exception. I will cooperate with government policies, and by
+        doing so I will disclose information to a governmental organisation or
+        law enforcement agency if the law deems necessary. Barring such an
+        extenuating circumstance, the data stored, which are the weights all
+        users (presumably) used for an exercise-related movement on any given
+        day will be kept private and secure.
       </p>
       <h2>Future Alterations</h2>
       <p>
-        No additional data is intended to be collected in the future. Although additional features are intended to be added
-        such as scheduled reminders. These however, require the same level of permissions as before.
-        That being said, your use of the skill will be assumed to be your acceptance of this document.
+        No additional personal data is to be collected in the future. This
+        document is, however, subject to minor changes. Although additional
+        features are intended to be added (such as scheduled reminders) they
+        will require the same level of permissions as before. That is to say,
+        only the phone number of each user will be used. That being said I would
+        now like to conclude by restating that as the user, your continual use
+        of the skill will be assumed to be your unadulterated acceptance of this
+        document.
       </p>
       <h2>Contact</h2>
       <p>
-        If you have any questions regarding this policy, or the practices employed in the skill, you may contact me at
-        k.k.wadia@student.tudelft.nl or at kaizad@email.com.
+        If you have any questions regarding privacy concerns, and / or the
+        practices employed in developing the skill, you may contact me at
+        <a href="mailto:k.k.wadia@student.tudelft.nl" target="_blank">
+          k.k.wadia@student.tudelft.nl
+        </a>
+        or
+        <a href="mailto:kaizad@email.com" target="_blank"> kaizad@email.com </a
+        >.
       </p>
       <h2>Addendum: Security</h2>
       <p>
-        Several measures are taken so that the user's data is not mistakenly exposed. 
-        Firstly, the AWS account used is private and
-        only I have access to the resources in it. Secondly, the backend is configured with Skill Verification and is never
-        invoked without the Alexa Skill ID being verified. Lastly, all the policies set within the account are done 
-        by giving the least privilege as possible. 
-        The following document shows the configuration of the policies set in order to secure the permissions between the 
-        backend and the database. <button>Reveal</button>
+        Several measures are taken so that the user's data is not mistakenly
+        exposed. Firstly, the AWS account used to host the skill is private and
+        only I have access to the resources in it. Secondly, the backend is
+        configured with Skill Verification and is never invoked without the
+        Alexa Skill ID being verified. Lastly, all the policies set within the
+        account to the resources are done by giving the least privilege as
+        possible to permit the skill to be full functional.
       </p>
-      <code style="display: none;">
-        AlexaFunctionRole:
-          Type: AWS::IAM::Role
-          Properties: 
-            AssumeRolePolicyDocument: 
-              Version: "2012-10-17"
-              Statement: 
-                - 
-                  Effect: "Allow"
-                  Principal: 
-                    Service: 
-                      - "lambda.amazonaws.com"
-                  Action: 
-                    - "sts:AssumeRole"
-            Path: "/"
-            Description: Allows Lambda to Use SNS and DynamoDB
-            ManagedPolicyArns: 
-              - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-          
-        AlexaFunctionSNSPolicy:
-          Type: 'AWS::IAM::Policy'
-          Properties:
-            PolicyName: AllowSNSfromLambda
-            PolicyDocument:
-              Version: 2012-10-17
-              Statement:
-                - Effect: Allow
-                  Action: 'sns:Publish'
-                  Resource: '*'
-            Roles:
-              - !Ref AlexaFunctionRole
-        
-        AlexaFunctionDBPolicy:
-          Type: 'AWS::IAM::Policy'
-          Properties:
-            PolicyName: AllowDynamoDBWritesfromLambda
-            PolicyDocument:
-              Version: 2012-10-17
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - 'dynamodb:PutItem'
-                    - 'dynamodb:GetItem'
-                    - 'dynamodb:UpdateItem'
-                  Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Table}"
-            Roles:
-              - !Ref AlexaFunctionRole
-      </code>
     </div>
-    <footer>The Privacy Policy Document was last updated on January 04, 2021</footer>
-    <script>
-      document.querySelector('button').addEventListener('click', (e) => {
-        const show = document.querySelector('code').style.display === 'inline';
-        document.querySelector('code').style.display = show ? "none" : "inline";
-        e.target.innerText = show ? "Reveal" : "Hide";
-      });
-    </script>
-</body>
 
+    <footer>The Privacy Policy was last updated on January 04, 2021</footer>
+  </body>
 </html>

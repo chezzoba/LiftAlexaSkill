@@ -2,14 +2,28 @@ const Alexa = require("ask-sdk-core");
 const axios = require("axios");
 const AWS = require("aws-sdk");
 
-const smsRegions = ["us-east-2", "us-east-1", 
-"us-west-1", "us-west-2", "ap-south-1", "ap-southeast-1", "ap-southeast-2", 
-"ap-northeast-1", "ca-central-1", "eu-central-1", "eu-west-1", "eu-west-2", 
-"eu-west-3", "eu-north-1", "me-south-1", "sa-east-1"];
+const smsRegions = [
+  "us-east-2",
+  "us-east-1",
+  "us-west-1",
+  "us-west-2",
+  "ap-south-1",
+  "ap-southeast-1",
+  "ap-southeast-2",
+  "ap-northeast-1",
+  "ca-central-1",
+  "eu-central-1",
+  "eu-west-1",
+  "eu-west-2",
+  "eu-west-3",
+  "eu-north-1",
+  "me-south-1",
+  "sa-east-1",
+];
 
-const sns = new AWS.SNS({ 
-  apiVersion: "2010-03-31", 
-  region: smsRegions[Math.floor(Math.random() * smsRegions.length)] 
+const sns = new AWS.SNS({
+  apiVersion: "2010-03-31",
+  region: smsRegions[Math.floor(Math.random() * smsRegions.length)],
 });
 
 const dynamodb = new AWS.DynamoDB.DocumentClient({ region: "us-east-1" });
@@ -32,7 +46,7 @@ const get = async (number) => {
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
-    AttributesToGet: [day, "week", "kilos", 'ProgressDay'],
+    AttributesToGet: [day, "week", "kilos", "ProgressDay"],
   };
 
   const lift = await dynamodb
@@ -50,7 +64,7 @@ const put = async (number, liftName, trainingMax, liftDay, kilos = true) => {
     .split(" ")
     .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
     .join(" ");
-  const entry = {lift: attr, mass: trainingMax, edited: dayNumber.getDate()};
+  const entry = { lift: attr, mass: trainingMax, edited: dayNumber.getDate() };
   const params = {
     Key: { phone: number },
     TableName: process.env.TABLE,
@@ -74,7 +88,7 @@ const updateWeek = async (number, neWeek) => {
     Key: { phone: number },
     TableName: process.env.TABLE,
     UpdateExpression: "set #a = :l, #b = :u",
-    ExpressionAttributeNames: { "#a": "week", "#b": "ProgressDay"},
+    ExpressionAttributeNames: { "#a": "week", "#b": "ProgressDay" },
     ExpressionAttributeValues: { ":l": neWeek, ":u": dayNumber.getDay() },
     ReturnValues: "UPDATED_NEW",
   };
@@ -109,8 +123,7 @@ const processWeight = (week, lift, trainingMax, kilos = true) => {
       basePercent,
     ];
     const weights = percentages.map(
-      (percent) =>
-        Math.round((trainingMax * percent ) / (unt * 100)) * unt
+      (percent) => Math.round((trainingMax * percent) / (unt * 100)) * unt
     );
     const unit = kilos ? "kilos" : "pounds";
     const msg = [
@@ -126,7 +139,7 @@ const processWeight = (week, lift, trainingMax, kilos = true) => {
   }
 };
 
-const repMax = (mass, reps) => Math.round(0.9 * mass * 36 / (37 - reps));
+const repMax = (mass, reps) => Math.round((0.9 * mass * 36) / (37 - reps));
 
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
@@ -140,7 +153,7 @@ const LaunchRequestHandler = {
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
-      .reprompt(speakOutput)
+      .reprompt("Don't worry if you don't know what to say, sometimes I don't either. Try telling me how much you lifted today.")
       .getResponse();
   },
 };
@@ -154,32 +167,59 @@ const PhoneMessageHandler = {
   },
   async handle(handlerInput) {
     const { confirmationStatus } = handlerInput.requestEnvelope.request.intent;
-    try {
-      const { phoneNumber, countryCode } = await getNumber(
-        handlerInput.requestEnvelope.context.System
+    const number = handlerInput.requestEnvelope.session.user.userId;
+    const data = await get(number);
+    if (!(data && data[day])) {
+      return handlerInput.responseBuilder
+        .speak(
+          `You didn't tell me anything yet. Believe me, I'd remember if you did.
+          So tell me what you do on ${day}s and I'll listen.`
+        )
+        .reprompt("So... This is getting awkward, huh?")
+        .getResponse();
+    } else if (data[day].edited !== dayNumber.getDate()) {
+      const progression =
+        (data.kilos ? 1 : 2) * (data[day].lift === "Deadlift" ? 2.5 : 1.25);
+      await put(
+        number,
+        data[day].lift,
+        data[day].mass + progression,
+        day,
+        data.kilos
       );
-      const number = `+${countryCode}${phoneNumber}`;
-      const data = await get(number);
-      if (!data[day]) {
-        return handlerInput.responseBuilder
-          .speak(
-            "You didn't tell me anything yet. Believe me I'd remember if you did."
-          )
-          .reprompt("So... This is getting awkward, huh?")
-          .getResponse();
-      } else if (data[day].edited !== dayNumber.getDate()) {
-        const progression = (data.kilos ? 1 : 2) * (data[day].lift === 'Deadlift' ? 2.5 : 1.25);
-        await put(number, data[day].lift, data[day].mass + progression, day, data.kilos);
-        if (data.ProgressDay && data.ProgressDay === dayNumber.getDay()) {
-          await updateWeek(number, data.week && data.week > 2 ? data.week - 2 : 5)
-        }
+      if (data.ProgressDay && data.ProgressDay === dayNumber.getDay()) {
+        await updateWeek(
+          number,
+          data.week && data.week > 2 ? data.week - 2 : 5
+        );
       }
-      const msg = processWeight(parseInt(data.week), data[day].lift, data[day].mass, data.kilos);
-      var outputText = msg.join("\n");
-      if (confirmationStatus === "CONFIRMED") {
+    }
+    const msg = processWeight(
+      parseInt(data.week),
+      data[day].lift,
+      data[day].mass,
+      data.kilos
+    );
+    var outputText = msg.join("\n");
+
+    if (confirmationStatus === "CONFIRMED") {
+      try {
+        const { phoneNumber, countryCode } = await getNumber(
+          handlerInput.requestEnvelope.context.System
+        );
+        if (!phoneNumber || !countryCode) {
+          return handlerInput.responseBuilder
+            .speak(
+              `This is embarrassing but 
+              I can't find your phone number anywhere.
+              You can set it in your Amazon account 
+              and then invoke the skill again.`
+            ).withShouldEndSession(true)
+             .getResponse();
+        }
         const params = {
-          PhoneNumber: number,
-          Message: msg.join("\n"),
+          PhoneNumber: `+${countryCode}${phoneNumber}`,
+          Message: outputText,
           MessageAttributes: {
             "AWS.SNS.SMS.SenderID": {
               DataType: "String",
@@ -196,24 +236,27 @@ const PhoneMessageHandler = {
         });
 
         outputText = "Alright! I texted you!";
+      } catch (err) {
+        console.log(err);
+        if (err.response && [401, 403].includes(err.response.status)) {
+          return handlerInput.responseBuilder
+            .speak(
+              `In order to send text updates and reminders
+              Progress Track depends on your phone number. 
+              Go to the home screen in your Alexa app and grant me permissions.`
+            )
+            .withAskForPermissionsConsentCard([
+              "alexa::profile:mobile_number:read",
+            ])
+            .withShouldEndSession(true)
+            .getResponse();
+        } else outputText = "Something seems to have gone wrong.";
       }
-    } catch (err) {
-      console.log(err);
-      if ( err.response && [401, 403].includes(err.response.status) ) {
-        return handlerInput.responseBuilder
-          .speak(
-            "You need to give me your number for this to work. Check your permissions."
-          )
-          .withAskForPermissionsConsentCard([
-            "alexa::profile:mobile_number:read",
-          ])
-          .getResponse();
-      } else outputText = "Something seems to have gone wrong.";
     }
     return handlerInput.responseBuilder
-        .speak(outputText)
-        .reprompt("So what's next?")
-        .getResponse();
+      .speak(outputText)
+      .withShouldEndSession(true)
+      .getResponse();
   },
 };
 
@@ -225,8 +268,7 @@ const HelpIntentHandler = {
     );
   },
   handle(handlerInput) {
-    const speakOutput =
-      `Ask me 'How much should I lift today?' or tell me how much you did lift today.
+    const speakOutput = `Ask me 'How much should I lift today?' or tell me how much you did lift today.
       You can also ask me to send you a message or tell you how much to lift.
       Don't worry if you don't get me immediately. Nobody does.`;
 
@@ -263,7 +305,8 @@ const FallbackIntentHandler = {
     );
   },
   handle(handlerInput) {
-    const speakOutput = "Sorry, I don't seem to have understood what you have just said.";
+    const speakOutput =
+      "Sorry, I don't seem to have understood what you have just said.";
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
@@ -281,7 +324,7 @@ const PutMyLiftIntentHandler = {
   },
   async handle(handlerInput) {
     const slots = new Object();
-    var speakOutput = "";
+    const { confirmationStatus } = handlerInput.requestEnvelope.request.intent;
 
     Object.values(handlerInput.requestEnvelope.request.intent.slots).map(
       ({ resolutions, value, name }) => {
@@ -295,47 +338,46 @@ const PutMyLiftIntentHandler = {
       }
     );
 
-    const transform = { today: 0, yesterday: -1, tomorrow: 1 };
-    const liftDay = slots.day in transform
-      ? days[dayNumber.getDay() + transform[slots.day]]
-      : days.includes(slots.day) ? slots.day : day;
+    if ( confirmationStatus !== "CONFIRMED" ) {
+      const sayConfirm = `Okay let's just start from the beginning. 
+      So if you did not do the ${slots.mass} ${slots.units} ${slots.lift},
+      what did you do?`;
 
-    
+      return handlerInput.responseBuilder
+      .speak(sayConfirm)
+      .reprompt("Did you forget?")
+      .getResponse();
+    }
+
+    const transform = { today: 0, yesterday: -1, tomorrow: 1 };
+    const liftDay =
+      slots.day in transform
+        ? days[dayNumber.getDay() + transform[slots.day]]
+        : days.includes(slots.day)
+        ? slots.day
+        : day;
+
     const kilos = slots.units !== "pounds";
     const trainingMax = repMax(slots.mass, slots.reps);
 
+    const number = handlerInput.requestEnvelope.session.user.userId;
 
-    try {
-      const { phoneNumber, countryCode } = await getNumber(
-        handlerInput.requestEnvelope.context.System
-      );
-      const number = `+${countryCode}${phoneNumber}`;
+    await put(number, slots.lift, trainingMax, liftDay, kilos);
 
-      await put(number, slots.lift, trainingMax, liftDay, kilos);
+    if ([1, 3, 5].includes(slots.reps)) await updateWeek(number, slots.reps);
 
-      if ( [1, 3, 5].includes(slots.reps) ) await updateWeek(number, slots.reps);
-
-      speakOutput = `So I'm guessing your training max for the ${slots.lift} is about 
-      ${trainingMax} ${kilos ? 'kilos' : 'pounds'} and your one rep max is around
-      ${Math.round(trainingMax / 0.9)} ${kilos ? 'kilos' : 'pounds'}.`;
-
-    } catch (err) {
-      console.log(err);
-      if ( err.response && [401, 403].includes(err.response.status) ) {
-        return handlerInput.responseBuilder
-          .speak(
-            "You need to give me your number for this to work. Check your permissions "
-          )
-          .withAskForPermissionsConsentCard([
-            "alexa::profile:mobile_number:read",
-          ])
-          .getResponse();
-      } else speakOutput = "I'm having a little trouble at the moment.";
-    }
+    const speakOutput = `So I'm guessing your training max for the ${
+      slots.lift
+    } is about 
+      ${trainingMax} ${
+      kilos ? "kilos" : "pounds"
+    } and your one rep max is around
+      ${Math.round(trainingMax / 0.9)} ${kilos ? "kilos" : "pounds"}.
+      Don't worry, I'll remember this for next ${day}`;
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
-      .reprompt("Is there anything else I can do for you?")
+      .withShouldEndSession(true)
       .getResponse();
   },
 };
@@ -415,5 +457,3 @@ exports.handler = Alexa.SkillBuilders.custom()
   .addErrorHandlers(ErrorHandler)
   .withCustomUserAgent("LiftApp")
   .lambda();
-
-
