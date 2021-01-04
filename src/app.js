@@ -173,9 +173,9 @@ const PhoneMessageHandler = {
       }
       if (data[day].edited !== dayNumber.getDate()) {
         const progression = (data.kilos ? 1 : 2) * (data[day].lift === 'Deadlift' ? 2.5 : 1.25);
-        await put(number, lift, data[day].mass + progression, day, data.kilos);
+        await put(number, data[day].lift, data[day].mass + progression, day, data.kilos);
       }
-      const msg = processWeight(parseInt(data.week), lift, trainingMax, data.kilos);
+      const msg = processWeight(parseInt(data.week), data[day].lift, data[day].mass, data.kilos);
       var outputText = msg.join("\n");
       if (confirmationStatus === "CONFIRMED") {
         const params = {
@@ -311,7 +311,7 @@ const PutMyLiftIntentHandler = {
 
       await put(number, slots.lift, trainingMax, liftDay, kilos);
 
-      if ( [5, 3, 1].includes(slots.reps) ) await updateWeek(number, slots.reps);
+      if ( [1, 3, 5].includes(slots.reps) ) await updateWeek(number, slots.reps);
 
       speakOutput = `So I'm guessing your training max for the ${slots.lift} is about 
       ${trainingMax} ${kilos ? 'kilos' : 'pounds'} and your one rep max,
