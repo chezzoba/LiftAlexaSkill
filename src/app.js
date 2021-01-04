@@ -160,20 +160,19 @@ const PhoneMessageHandler = {
       );
       const number = `+${countryCode}${phoneNumber}`;
       const data = await get(number);
-      if (!data) {
+      if (!data[day]) {
         return handlerInput.responseBuilder
           .speak(
             "You didn't tell me anything yet. Believe me I'd remember if you did."
           )
           .reprompt("So... This is getting awkward, huh?")
           .getResponse();
-      }
-      if (data.ProgressDay && data.ProgressDay === dayNumber.getDay()) {
-        await updateWeek(number, data.week && data.week > 2 ? data.week - 2 : 5)
-      }
-      if (data[day].edited !== dayNumber.getDate()) {
+      } else if (data[day].edited !== dayNumber.getDate()) {
         const progression = (data.kilos ? 1 : 2) * (data[day].lift === 'Deadlift' ? 2.5 : 1.25);
         await put(number, data[day].lift, data[day].mass + progression, day, data.kilos);
+        if (data.ProgressDay && data.ProgressDay === dayNumber.getDay()) {
+          await updateWeek(number, data.week && data.week > 2 ? data.week - 2 : 5)
+        }
       }
       const msg = processWeight(parseInt(data.week), data[day].lift, data[day].mass, data.kilos);
       var outputText = msg.join("\n");
@@ -189,10 +188,12 @@ const PhoneMessageHandler = {
           },
         };
 
-        await sns.publish(params, (err, data) => {
+        await sns.publish(params, async (err, data) => {
           if (err) console.log(err);
-          else console.log(data);
-        }).promise();
+          else {
+            console.log(data);
+          }
+        });
 
         outputText = "Alright! I texted you!";
       }
@@ -211,7 +212,7 @@ const PhoneMessageHandler = {
     }
     return handlerInput.responseBuilder
         .speak(outputText)
-        .reprompt("Is there something else I can help you with?")
+        .reprompt("So what's next?")
         .getResponse();
   },
 };
@@ -225,12 +226,13 @@ const HelpIntentHandler = {
   },
   handle(handlerInput) {
     const speakOutput =
-      `Ask me 'How much should I lift today?' or tell me how much you did today.
-      You can also ask me to send you a message.`;
+      `Ask me 'How much should I lift today?' or tell me how much you did lift today.
+      You can also ask me to send you a message or tell you how much to lift.
+      Don't worry if you don't get me immediately. Nobody does.`;
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
-      .reprompt(speakOutput)
+      .reprompt("Is there something else I can help you with?")
       .getResponse();
   },
 };
@@ -246,7 +248,7 @@ const CancelAndStopIntentHandler = {
     );
   },
   handle(handlerInput) {
-    const speakOutput = "Goodbye!";
+    const speakOutput = "I bid you farewell!";
 
     return handlerInput.responseBuilder.speak(speakOutput).getResponse();
   },
@@ -314,9 +316,8 @@ const PutMyLiftIntentHandler = {
       if ( [1, 3, 5].includes(slots.reps) ) await updateWeek(number, slots.reps);
 
       speakOutput = `So I'm guessing your training max for the ${slots.lift} is about 
-      ${trainingMax} ${kilos ? 'kilos' : 'pounds'} and your one rep max,
-      ${Math.round(trainingMax / 0.9)} ${kilos ? 'kilos' : 'pounds'}.
-      I'll remember this for next time.`;
+      ${trainingMax} ${kilos ? 'kilos' : 'pounds'} and your one rep max is around
+      ${Math.round(trainingMax / 0.9)} ${kilos ? 'kilos' : 'pounds'}.`;
 
     } catch (err) {
       console.log(err);
@@ -334,7 +335,7 @@ const PutMyLiftIntentHandler = {
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
-      .reprompt(speakOutput)
+      .reprompt("Is there anything else I can do for you?")
       .getResponse();
   },
 };

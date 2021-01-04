@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy</title>
+    <title>PRIVACY POLICY</title>
     <link rel="icon" href="icons/icon_108_A2Z.png" type="image/x-icon" />
     <style>
         body {
@@ -17,6 +17,12 @@
           text-align: left;
           margin: 5rem 10% 0 10%;
         }
+        @media (max-width: 800px) {
+          .content {
+            text-align: center;
+            margin: 5rem 0 0 0;
+          }
+        }
         h1 {
           margin: 3rem 0 2rem 0;
           font-family: sans-serif;
@@ -24,7 +30,7 @@
         }
         hr {
           border: 0;
-          height: 0; /* Firefox... */
+          height: 0; 
           box-shadow: 0 0 10px 1px black;
         }
         h2 {
@@ -35,7 +41,7 @@
     </style>
 </head>
 <body>
-    <h1>Privacy Policy</h1>
+    <h1>PRIVACY POLICY</h1>
     <hr>
     <div class="content">
       <h2>General</h2>
@@ -55,16 +61,18 @@
       </p>
       <h2>Data Collected</h2>
       <p>
-        For the purposes of full disclosure, the phone number of each user is collected and stored on the database.
+        For the purpose of full disclosure, the phone number of each user is collected and stored on the database.
         This is for its most prominent feature, which sends an SMS text message to the user. As a number is mandatory
         in order to have a text message delivered, I request for the number of the user and nothing more.
         As the skill requires uniquely identifiable information in order to retreive the data for the particular user,
         the phone number also serves to persist user attributes between sessions. This ensures that the user is identified
         not only between sessions but also after re enabling the application, unlike the alternatives. 
         Users may speak to the skill and have their queries recorded (specifically the weights of their excercises). 
-        As this involves the core functionality of the skill and is the primary purpose, this data has to be 
+        As this involves the core functionality of the skill and is the primary purpose, this data is 
         collected and stored on the Amazon Web Services DynamoDB database. The data stored is not
-        disclosed to third parties and resides on the database. No data is made public.
+        disclosed to third parties and resides on the private database. No data is made public with only one exception.
+        I will cooperate with government policies, and by doing so I will disclose information
+        to a governmental organisation or law enforcement agency if the law deems necessary.
       </p>
       <h2>Future Alterations</h2>
       <p>
@@ -72,7 +80,13 @@
         such as scheduled reminders. These however, require the same level of permissions as before.
         That being said, your use of the skill will be assumed to be your acceptance of this document.
       </p>
+      <h2>Contact</h2>
+      <p>
+        If you have any questions regarding this policy, or the practices employed in the skill, you may contact me at
+        k.k.wadia@student.tudelft.nl or at kaizad@email.com.
+      </p>
     </div>
-    
+    <footer>The Privacy Policy Document was last updated on January 04, 2021</footer>
 </body>
+
 </html>
