@@ -4,7 +4,7 @@ const { dayNumber, day } = require('./compute');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient({ region: "us-east-1" });
 
-export const get = async (number) => {
+exports.get = async (number) => {
     const params = {
       Key: { phone: number },
       TableName: process.env.TABLE,
@@ -21,7 +21,7 @@ export const get = async (number) => {
     return lift.Item;
 };
   
-export const put = async (number, liftName, trainingMax, liftDay, kilos = true) => {
+exports.put = async (number, liftName, trainingMax, liftDay, kilos = true) => {
     const attr = liftName
       .split(" ")
       .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
@@ -45,7 +45,7 @@ export const put = async (number, liftName, trainingMax, liftDay, kilos = true) 
     return res.Attributes;
 };
   
-export const updateWeek = async (number, neWeek) => {
+exports.updateWeek = async (number, neWeek) => {
     const params = {
       Key: { phone: number },
       TableName: process.env.TABLE,

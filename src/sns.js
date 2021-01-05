@@ -24,7 +24,7 @@ const sns = new AWS.SNS({
   region: smsRegions[Math.floor(Math.random() * smsRegions.length)],
 });
 
-const send = async (message, { countryCode, phoneNumber }) => {
+module.exports = async (message, { countryCode, phoneNumber }) => {
     const params = {
         PhoneNumber: `+${countryCode}${phoneNumber}`,
         Message: message,
@@ -39,6 +39,4 @@ const send = async (message, { countryCode, phoneNumber }) => {
         if (err) console.log(err);
         else return data;
     });
-};
-
-export default send
+}

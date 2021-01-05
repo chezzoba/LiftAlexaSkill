@@ -2,7 +2,7 @@ const axios = require("axios");
 
 const { dayNumber, days } = require('./compute');
 
-export const getNumber = async ({ apiAccessToken, apiEndpoint }) => {
+exports.getNumber = async ({ apiAccessToken, apiEndpoint }) => {
     const { data } = await axios.get(
       apiEndpoint + "/v2/accounts/~current/settings/Profile.mobileNumber",
       { headers: { Authorization: "Bearer " + apiAccessToken } }
@@ -10,7 +10,7 @@ export const getNumber = async ({ apiAccessToken, apiEndpoint }) => {
     return data;
 };
   
-export const getUserDay = async ({ apiAccessToken, apiEndpoint, device: { deviceId } }) => {
+exports.getUserDay = async ({ apiAccessToken, apiEndpoint, device: { deviceId } }) => {
     var currentDateTime;
     try {
       const { data } = await axios.get(

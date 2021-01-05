@@ -5,6 +5,7 @@ const send = require('./sns');
 const { days, dayNumber, day, processWeight, repMax } = require('./compute');
 const { get, put, updateWeek } = require('./db');
 
+
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
     return (
@@ -106,7 +107,7 @@ const PhoneMessageHandler = {
     );
 
     var outputText = msg.join("\n");
-    
+
     if (confirmed && numberData) {
       await send(outputText, numberData);
       outputText = "Alright! I texted you!";

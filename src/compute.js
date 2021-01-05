@@ -1,4 +1,4 @@
-export const days = [
+const days = [
     "Sunday",
     "Monday",
     "Tuesday",
@@ -8,11 +8,13 @@ export const days = [
     "Saturday",
   ];
   
-export const dayNumber = new Date();
+const dayNumber = new Date();
   
-export const day = days[dayNumber.getDay()];
+const day = days[dayNumber.getDay()];
 
-export const processWeight = (week, lift, trainingMax, kilos = true) => {
+module.exports = {days, dayNumber, day};
+
+module.exports.processWeight = (week, lift, trainingMax, kilos = true) => {
     if (lift === "Rest") {
       return ["Today is your Rest Day!"];
     } else {
@@ -41,4 +43,4 @@ export const processWeight = (week, lift, trainingMax, kilos = true) => {
     }
   };
   
-export const repMax = (mass, reps) => Math.round((0.9 * mass * 36) / (37 - reps));
+module.exports.repMax = (mass, reps) => Math.round((0.9 * mass * 36) / (37 - reps));
