@@ -1,145 +1,9 @@
 const Alexa = require("ask-sdk-core");
-const axios = require("axios");
-const AWS = require("aws-sdk");
 
-const smsRegions = [
-  "us-east-2",
-  "us-east-1",
-  "us-west-1",
-  "us-west-2",
-  "ap-south-1",
-  "ap-southeast-1",
-  "ap-southeast-2",
-  "ap-northeast-1",
-  "ca-central-1",
-  "eu-central-1",
-  "eu-west-1",
-  "eu-west-2",
-  "eu-west-3",
-  "eu-north-1",
-  "me-south-1",
-  "sa-east-1",
-];
-
-const sns = new AWS.SNS({
-  apiVersion: "2010-03-31",
-  region: smsRegions[Math.floor(Math.random() * smsRegions.length)],
-});
-
-const dynamodb = new AWS.DynamoDB.DocumentClient({ region: "us-east-1" });
-
-const days = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
-const dayNumber = new Date();
-
-const day = days[dayNumber.getDay()];
-
-const get = async (number) => {
-  const params = {
-    Key: { phone: number },
-    TableName: process.env.TABLE,
-    AttributesToGet: [day, "week", "kilos", "ProgressDay"],
-  };
-
-  const lift = await dynamodb
-    .get(params, (err, data) => {
-      if (err) console.log(err, err.stack);
-      else return data;
-    })
-    .promise();
-
-  return lift.Item;
-};
-
-const put = async (number, liftName, trainingMax, liftDay, kilos = true) => {
-  const attr = liftName
-    .split(" ")
-    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
-  const entry = { lift: attr, mass: trainingMax, edited: dayNumber.getDate() };
-  const params = {
-    Key: { phone: number },
-    TableName: process.env.TABLE,
-    UpdateExpression: "set #a = :l, #b = :k",
-    ExpressionAttributeNames: { "#a": liftDay, "#b": "kilos" },
-    ExpressionAttributeValues: { ":l": entry, ":k": kilos },
-    ReturnValues: "UPDATED_NEW",
-  };
-  const res = await dynamodb
-    .update(params, (err, data) => {
-      if (err) console.log(err);
-      else return data;
-    })
-    .promise();
-
-  return res.Attributes;
-};
-
-const updateWeek = async (number, neWeek) => {
-  const params = {
-    Key: { phone: number },
-    TableName: process.env.TABLE,
-    UpdateExpression: "set #a = :l, #b = :u",
-    ExpressionAttributeNames: { "#a": "week", "#b": "ProgressDay" },
-    ExpressionAttributeValues: { ":l": neWeek, ":u": dayNumber.getDay() },
-    ReturnValues: "UPDATED_NEW",
-  };
-  const res = await dynamodb
-    .update(params, (err, data) => {
-      if (err) console.log(err);
-      else return data;
-    })
-    .promise();
-
-  return res.Attributes;
-};
-
-const getNumber = async ({ apiAccessToken, apiEndpoint }) => {
-  const { status, data } = await axios.get(
-    apiEndpoint + "/v2/accounts/~current/settings/Profile.mobileNumber",
-    { headers: { Authorization: "Bearer " + apiAccessToken } }
-  );
-  return status == 200 && data;
-};
-
-const processWeight = (week, lift, trainingMax, kilos = true) => {
-  if (lift === "Rest") {
-    return ["Today is your Rest Day!"];
-  } else {
-    const basePercent = week === 1 ? 75 : week === 3 ? 70 : 65;
-    const unt = kilos ? 2.5 : 5;
-    const percentages = [
-      basePercent,
-      basePercent + 10,
-      basePercent + 20,
-      basePercent,
-    ];
-    const weights = percentages.map(
-      (percent) => Math.round((trainingMax * percent) / (unt * 100)) * unt
-    );
-    const unit = kilos ? "kilos" : "pounds";
-    const msg = [
-      `Today you are doing the ${lift} for: `,
-      `${week === 1 ? "A rep" : week + " reps"} of ${weights[0]} ${unit}, `,
-      `${week === 1 ? "A rep" : week + " reps"} of ${weights[1]} ${unit}, `,
-      `More than ${week === 1 ? "a rep" : week + " reps"} of ${
-        weights[2]
-      } ${unit}, `,
-      `5 sets of 5 reps of ${weights[3]} ${unit}`,
-    ];
-    return msg;
-  }
-};
-
-const repMax = (mass, reps) => Math.round((0.9 * mass * 36) / (37 - reps));
+const { getNumber, getUserDay } = require('./alexa');
+const send = require('./sns');
+const { days, dayNumber, day, processWeight, repMax } = require('./compute');
+const { get, put, updateWeek } = require('./db');
 
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
@@ -166,16 +30,56 @@ const PhoneMessageHandler = {
     );
   },
   async handle(handlerInput) {
-    const { confirmationStatus } = handlerInput.requestEnvelope.request.intent;
+    const confirmed = handlerInput.requestEnvelope.request.intent.confirmationStatus === "CONFIRMED";
+    var numberData;
+    if (confirmed) {
+      try {
+        numberData = await getNumber(
+          handlerInput.requestEnvelope.context.System
+        );
+        if (!numberData) {
+          return handlerInput.responseBuilder
+            .speak(
+              `This is embarrassing but 
+              I can't find your phone number anywhere.
+              You can set it in your Amazon account 
+              and then invoke the skill again.`
+            ).withShouldEndSession(true)
+             .getResponse();
+        }
+        
+      } catch (err) {
+        console.log(err);
+        if (err.response && [401, 403].includes(err.response.status)) {
+          return handlerInput.responseBuilder
+            .speak(
+              `In order to send text updates and reminders
+              Progress Track depends on your phone number. 
+              Go to the home screen in your Alexa app and grant me permissions.`
+            )
+            .withAskForPermissionsConsentCard([
+              "alexa::profile:mobile_number:read",
+            ])
+            .withShouldEndSession(true)
+            .getResponse();
+        } else {
+          return handlerInput.responseBuilder
+            .speak("I'm sorry, turns out I don't have my phone with me right now.")
+            .withShouldEndSession(true)
+            .getResponse(); 
+        }
+      }
+    }
     const number = handlerInput.requestEnvelope.session.user.userId;
     const data = await get(number);
     if (!(data && data[day])) {
       return handlerInput.responseBuilder
         .speak(
-          `You didn't tell me anything yet. Believe me, I'd remember if you did.
-          So tell me what you do on ${day}s and I'll listen.`
+          `You haven't told me how much you've lifted before.
+          First tell me what you do on ${day}s,
+          then ask me how much you can lift.`
         )
-        .reprompt("So... This is getting awkward, huh?")
+        .reprompt("So, this is getting awkward, huh?")
         .getResponse();
     } else if (data[day].edited !== dayNumber.getDate()) {
       const progression =
@@ -200,59 +104,14 @@ const PhoneMessageHandler = {
       data[day].mass,
       data.kilos
     );
+
     var outputText = msg.join("\n");
-
-    if (confirmationStatus === "CONFIRMED") {
-      try {
-        const { phoneNumber, countryCode } = await getNumber(
-          handlerInput.requestEnvelope.context.System
-        );
-        if (!phoneNumber || !countryCode) {
-          return handlerInput.responseBuilder
-            .speak(
-              `This is embarrassing but 
-              I can't find your phone number anywhere.
-              You can set it in your Amazon account 
-              and then invoke the skill again.`
-            ).withShouldEndSession(true)
-             .getResponse();
-        }
-        const params = {
-          PhoneNumber: `+${countryCode}${phoneNumber}`,
-          Message: outputText,
-          MessageAttributes: {
-            "AWS.SNS.SMS.SenderID": {
-              DataType: "String",
-              StringValue: "MyLifts",
-            },
-          },
-        };
-
-        await sns.publish(params, async (err, data) => {
-          if (err) console.log(err);
-          else {
-            console.log(data);
-          }
-        });
-
-        outputText = "Alright! I texted you!";
-      } catch (err) {
-        console.log(err);
-        if (err.response && [401, 403].includes(err.response.status)) {
-          return handlerInput.responseBuilder
-            .speak(
-              `In order to send text updates and reminders
-              Progress Track depends on your phone number. 
-              Go to the home screen in your Alexa app and grant me permissions.`
-            )
-            .withAskForPermissionsConsentCard([
-              "alexa::profile:mobile_number:read",
-            ])
-            .withShouldEndSession(true)
-            .getResponse();
-        } else outputText = "Something seems to have gone wrong.";
-      }
+    
+    if (confirmed && numberData) {
+      await send(outputText, numberData);
+      outputText = "Alright! I texted you!";
     }
+    
     return handlerInput.responseBuilder
       .speak(outputText)
       .withShouldEndSession(true)
@@ -349,16 +208,20 @@ const PutMyLiftIntentHandler = {
       .getResponse();
     }
 
+    const userDay = await getUserDay(
+      handlerInput.requestEnvelope.context.System
+    );
     const transform = { today: 0, yesterday: -1, tomorrow: 1 };
     const liftDay =
       slots.day in transform
         ? days[dayNumber.getDay() + transform[slots.day]]
         : days.includes(slots.day)
         ? slots.day
-        : day;
+        : userDay;
 
     const kilos = slots.units !== "pounds";
     const trainingMax = repMax(slots.mass, slots.reps);
+    
 
     const number = handlerInput.requestEnvelope.session.user.userId;
 
@@ -373,7 +236,7 @@ const PutMyLiftIntentHandler = {
       kilos ? "kilos" : "pounds"
     } and your one rep max is around
       ${Math.round(trainingMax / 0.9)} ${kilos ? "kilos" : "pounds"}.
-      Don't worry, I'll remember this for next ${day}`;
+      Don't worry, I'll remember this for next ${userDay}`;
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
