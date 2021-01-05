@@ -1,10 +1,9 @@
 const Alexa = require("ask-sdk-core");
 
-const { getNumber, getUserDay } = require('./alexa');
-const send = require('./sns');
-const { days, dayNumber, day, processWeight, repMax } = require('./compute');
-const { get, put, updateWeek } = require('./db');
-
+const { getNumber, getUserDay } = require("./alexa");
+const send = require("./sns");
+const { days, dayNumber, day, processWeight, repMax } = require("./compute");
+const { get, put, updateWeek } = require("./db");
 
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
@@ -13,12 +12,13 @@ const LaunchRequestHandler = {
     );
   },
   handle(handlerInput) {
-    const speakOutput = `Ask or tell me how much you have lifted. 
-    You can also ask me to send you a message.`;
+    const speakOutput = `Ask or tell me how much you have lifted.`;
 
     return handlerInput.responseBuilder
       .speak(speakOutput)
-      .reprompt("Don't worry if you don't know what to say, sometimes I don't either. Try telling me how much you lifted today.")
+      .reprompt(
+        "Don't worry if you don't know what to say, sometimes I don't either. Try telling me how much you lifted today."
+      )
       .getResponse();
   },
 };
@@ -31,31 +31,37 @@ const PhoneMessageHandler = {
     );
   },
   async handle(handlerInput) {
-    const confirmed = handlerInput.requestEnvelope.request.intent.confirmationStatus === "CONFIRMED";
+    const confirmed =
+      handlerInput.requestEnvelope.request.intent.confirmationStatus ===
+      "CONFIRMED";
     var numberData;
     if (confirmed) {
       try {
         numberData = await getNumber(
           handlerInput.requestEnvelope.context.System
         );
-        if (!numberData) {
+        if (numberData.status !== 200) {
           return handlerInput.responseBuilder
             .speak(
               `This is embarrassing but 
-              I can't find your phone number anywhere.
+              I can't find your phone number.
               You can set it in your Amazon account 
-              and then invoke the skill again.`
-            ).withShouldEndSession(true)
-             .getResponse();
+              and then invoke the skill again after
+              changing the permissions in the Alexa app.`
+            )
+            .withAskForPermissionsConsentCard([
+              "alexa::profile:mobile_number:read",
+            ])
+            .withShouldEndSession(true)
+            .getResponse();
         }
-        
       } catch (err) {
         console.log(err);
         if (err.response && [401, 403].includes(err.response.status)) {
           return handlerInput.responseBuilder
             .speak(
-              `In order to send text updates and reminders
-              Progress Track depends on your phone number. 
+              `In order to send text updates and reminders,
+              Progress Tracker depends on your phone number. 
               Go to the home screen in your Alexa app and grant me permissions.`
             )
             .withAskForPermissionsConsentCard([
@@ -65,9 +71,11 @@ const PhoneMessageHandler = {
             .getResponse();
         } else {
           return handlerInput.responseBuilder
-            .speak("I'm sorry, turns out I don't have my phone with me right now.")
+            .speak(
+              "I'm sorry, it turns out I don't have my phone with me right now."
+            )
             .withShouldEndSession(true)
-            .getResponse(); 
+            .getResponse();
         }
       }
     }
@@ -106,15 +114,19 @@ const PhoneMessageHandler = {
       data.kilos
     );
 
-    var outputText = msg.join("\n");
+    const outputText = msg.join("\n");
 
     if (confirmed && numberData) {
       await send(outputText, numberData);
-      outputText = "Alright! I texted you!";
+      return handlerInput.responseBuilder
+        .speak("Alright! I texted you!")
+        .withShouldEndSession(true)
+        .getResponse();
     }
-    
+
     return handlerInput.responseBuilder
       .speak(outputText)
+      .withSimpleCard("Today's Lifts", outputText)
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -131,10 +143,12 @@ const HelpIntentHandler = {
     const speakOutput = `Ask me 'How much should I lift today?' or tell me how much you did lift today.
       You can also ask me to send you a message or tell you how much to lift.
       Don't worry if you don't get me immediately. Nobody does.`;
-
+    const cardContent = `Ask me:\n'How much should I lift today?'
+or say:\n'I just lifted like 500 kilos today'.`;
     return handlerInput.responseBuilder
       .speak(speakOutput)
       .reprompt("Is there something else I can help you with?")
+      .withSimpleCard("Don't Worry!", cardContent)
       .getResponse();
   },
 };
@@ -185,7 +199,6 @@ const PutMyLiftIntentHandler = {
   async handle(handlerInput) {
     const slots = new Object();
     const { confirmationStatus } = handlerInput.requestEnvelope.request.intent;
-
     Object.values(handlerInput.requestEnvelope.request.intent.slots).map(
       ({ resolutions, value, name }) => {
         slots[name] =
@@ -197,16 +210,17 @@ const PutMyLiftIntentHandler = {
           (!isNaN(parseFloat(value)) ? parseFloat(value) : value);
       }
     );
-
-    if ( confirmationStatus !== "CONFIRMED" ) {
+    const kilos = slots.units !== "pounds";
+    if (confirmationStatus !== "CONFIRMED") {
       const sayConfirm = `Okay let's just start from the beginning. 
-      So if you did not do the ${slots.mass} ${slots.units} ${slots.lift},
-      what did you do?`;
+      So if you did not do the 
+      ${slots.mass} ${kilos ? "kilo" : "pound"} 
+      ${slots.lift}, what did you do?`;
 
       return handlerInput.responseBuilder
-      .speak(sayConfirm)
-      .reprompt("Did you forget?")
-      .getResponse();
+        .speak(sayConfirm)
+        .reprompt("Did you forget?")
+        .getResponse();
     }
 
     const userDay = await getUserDay(
@@ -220,9 +234,7 @@ const PutMyLiftIntentHandler = {
         ? slots.day
         : userDay;
 
-    const kilos = slots.units !== "pounds";
     const trainingMax = repMax(slots.mass, slots.reps);
-    
 
     const number = handlerInput.requestEnvelope.session.user.userId;
 
@@ -239,8 +251,13 @@ const PutMyLiftIntentHandler = {
       ${Math.round(trainingMax / 0.9)} ${kilos ? "kilos" : "pounds"}.
       Don't worry, I'll remember this for next ${userDay}`;
 
+    const cardContent = `Training Max: ${trainingMax} ${
+      kilos ? "kg" : "lbs"
+    }\nOne Rep Max: ${Math.round(trainingMax / 0.9)} ${kilos ? "kg" : "lbs"}`;
+
     return handlerInput.responseBuilder
       .speak(speakOutput)
+      .withSimpleCard(`Current Stats: ${slots.lift}`, cardContent)
       .withShouldEndSession(true)
       .getResponse();
   },

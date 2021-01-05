@@ -3,10 +3,11 @@ const axios = require("axios");
 const { dayNumber, days } = require('./compute');
 
 exports.getNumber = async ({ apiAccessToken, apiEndpoint }) => {
-    const { data } = await axios.get(
+    const { data, status } = await axios.get(
       apiEndpoint + "/v2/accounts/~current/settings/Profile.mobileNumber",
       { headers: { Authorization: "Bearer " + apiAccessToken } }
     );
+    data.status = status;
     return data;
 };
   

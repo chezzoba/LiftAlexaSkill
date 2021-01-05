@@ -29,7 +29,7 @@ module.exports.processWeight = (week, lift, trainingMax, kilos = true) => {
       const weights = percentages.map(
         (percent) => Math.round((trainingMax * percent) / (unt * 100)) * unt
       );
-      const unit = kilos ? "kilos" : "pounds";
+      const unit = kilos ? "kg" : "lbs";
       const msg = [
         `Today you are doing the ${lift} for: `,
         `${week === 1 ? "A rep" : week + " reps"} of ${weights[0]} ${unit}, `,

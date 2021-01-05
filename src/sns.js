@@ -2,7 +2,6 @@ const AWS = require("aws-sdk");
 
 const smsRegions = [
   "us-east-2",
-  "us-east-1",
   "us-west-1",
   "us-west-2",
   "ap-south-1",
@@ -18,25 +17,29 @@ const smsRegions = [
   "me-south-1",
   "sa-east-1",
 ];
+const region =
+  Math.random() < 0.5
+    ? "us-east-1"
+    : smsRegions[Math.floor(Math.random() * smsRegions.length)];
 
 const sns = new AWS.SNS({
   apiVersion: "2010-03-31",
-  region: smsRegions[Math.floor(Math.random() * smsRegions.length)],
+  region: region,
 });
 
 module.exports = async (message, { countryCode, phoneNumber }) => {
-    const params = {
-        PhoneNumber: `+${countryCode}${phoneNumber}`,
-        Message: message,
-        MessageAttributes: {
-          "AWS.SNS.SMS.SenderID": {
-            DataType: "String",
-            StringValue: "MyLifts",
-          },
-        },
-    };
-    return await sns.publish(params, async (err, data) => {
-        if (err) console.log(err);
-        else return data;
-    });
-}
+  const params = {
+    PhoneNumber: `+${countryCode}${phoneNumber}`,
+    Message: message,
+    MessageAttributes: {
+      "AWS.SNS.SMS.SenderID": {
+        DataType: "String",
+        StringValue: "MyLifts",
+      },
+    },
+  };
+  return await sns.publish(params, async (err, data) => {
+    if (err) console.log(err);
+    else return data;
+  });
+};
