@@ -43,8 +43,8 @@ const PhoneMessageHandler = {
         if (numberData.status !== 200) {
           return handlerInput.responseBuilder
             .speak(
-              `This is embarrassing but 
-              I can't find your phone number.
+              `In order to send text updates and reminders,
+              Progress Tracker depends on your phone number.
               You can set it in your Amazon account 
               and then invoke the skill again after
               changing the permissions in the Alexa app.`
@@ -57,7 +57,7 @@ const PhoneMessageHandler = {
         }
       } catch (err) {
         console.log(err);
-        if (err.response && [401, 403].includes(err.response.status)) {
+        if (err.response && [401, 403, 204].includes(err.response.status)) {
           return handlerInput.responseBuilder
             .speak(
               `In order to send text updates and reminders,

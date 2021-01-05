@@ -15,11 +15,16 @@ const day = days[dayNumber.getDay()];
 module.exports = {days, dayNumber, day};
 
 module.exports.processWeight = (week, lift, trainingMax, kilos = true) => {
+    const unt = kilos ? 2.5 : 5;
+    const unit = kilos ? "kg" : "lbs";
+
     if (lift === "Rest") {
-      return ["Today is your Rest Day!"];
+      return ["Actually, today is your Rest Day!"];
+    } else if (lift === 'Deadlift') {
+       return ['You can do the Deadlift for:',
+        `3 sets of 5 reps of ${Math.round(trainingMax / unt) * unt} ${unit}`]
     } else {
       const basePercent = week === 1 ? 75 : week === 3 ? 70 : 65;
-      const unt = kilos ? 2.5 : 5;
       const percentages = [
         basePercent,
         basePercent + 10,
@@ -29,17 +34,13 @@ module.exports.processWeight = (week, lift, trainingMax, kilos = true) => {
       const weights = percentages.map(
         (percent) => Math.round((trainingMax * percent) / (unt * 100)) * unt
       );
-      const unit = kilos ? "kg" : "lbs";
-      const msg = [
-        `Today you are doing the ${lift} for: `,
+      return [ `You can do the ${lift} for: `,
         `${week === 1 ? "A rep" : week + " reps"} of ${weights[0]} ${unit}, `,
         `${week === 1 ? "A rep" : week + " reps"} of ${weights[1]} ${unit}, `,
         `More than ${week === 1 ? "a rep" : week + " reps"} of ${
           weights[2]
         } ${unit}, `,
-        `5 sets of 5 reps of ${weights[3]} ${unit}`,
-      ];
-      return msg;
+        `5 sets of 5 reps of ${weights[3]} ${unit}`]
     }
   };
   
