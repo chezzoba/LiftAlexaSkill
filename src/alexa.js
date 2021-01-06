@@ -19,7 +19,7 @@ exports.getUserDay = async ({ apiAccessToken, apiEndpoint, device: { deviceId } 
         { headers: { Authorization: "Bearer " + apiAccessToken } }
       );
       if (!data) currentDateTime = dayNumber;
-      currentDateTime = new Date(new Date().toLocaleString("en-US", 
+      else currentDateTime = new Date(new Date().toLocaleString("en-US", 
       {timeZone: data}));
     } catch (err) {
       console.log(err);

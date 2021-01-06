@@ -144,7 +144,7 @@ const HelpIntentHandler = {
       You can also ask me to send you a message or tell you how much to lift.
       Don't worry if you don't get me immediately. Nobody does.`;
     const cardContent = `Ask me:\n'How much should I lift today?'
-or say:\n'I just lifted like 500 kilos today'.`;
+Or say:\n'I just lifted like 500 kilos today'.`;
     return handlerInput.responseBuilder
       .speak(speakOutput)
       .reprompt("Is there something else I can help you with?")
@@ -232,7 +232,7 @@ const PutMyLiftIntentHandler = {
         ? days[dayNumber.getDay() + transform[slots.day]]
         : days.includes(slots.day)
         ? slots.day
-        : userDay;
+        : day;
 
     const trainingMax = repMax(slots.mass, slots.reps);
 
